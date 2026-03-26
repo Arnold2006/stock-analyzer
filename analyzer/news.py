@@ -12,6 +12,7 @@ from typing import Any
 from utils.cache import cached
 from utils.scraping import (
     fetch_marketwatch_rss,
+    fetch_nordnet_news,
     fetch_reuters_rss,
     fetch_yahoo_rss,
     filter_entries_by_ticker,
@@ -48,6 +49,14 @@ def get_news(ticker: str) -> list[dict[str, str]]:
         logger.info("Yahoo Finance returned %d entries for %s", len(yahoo_entries), ticker)
     except Exception as exc:
         logger.warning("Yahoo Finance RSS failed for %s: %s", ticker, exc)
+
+    # Nordnet market-news search (ticker-specific)
+    try:
+        nordnet_entries = fetch_nordnet_news(ticker)
+        all_entries.extend(nordnet_entries)
+        logger.info("Nordnet returned %d entries for %s", len(nordnet_entries), ticker)
+    except Exception as exc:
+        logger.warning("Nordnet news failed for %s: %s", ticker, exc)
 
     # General feeds – filtered by ticker mention
     for feed_func, name in [

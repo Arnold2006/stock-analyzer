@@ -157,6 +157,75 @@ def fetch_reuters_rss() -> list[dict[str, str]]:
     return fetch_rss(url)
 
 
+def fetch_nordnet_news(ticker: str) -> list[dict[str, str]]:
+    """Fetch news for *ticker* from nordnet.dk/aktier.
+
+    Queries the Nordnet public market-news search API.  The function returns
+    entries in the same format used by all other news fetchers so they can be
+    merged directly into the aggregate news list.  It fails silently (returning
+    an empty list) when Nordnet is unreachable or returns no usable data.
+
+    Parameters
+    ----------
+    ticker:
+        Stock ticker symbol (e.g. ``"AAPL"`` or ``"NOVO-B"``).
+
+    Returns
+    -------
+    list[dict[str, str]]
+        News entries with keys ``title``, ``link``, ``summary``, ``published``.
+    """
+    # Nordnet exposes a public search API used by their own web-frontend.
+    # The ``NEWS`` search_space returns news articles that match the query.
+    search_url = (
+        "https://www.nordnet.dk/api/2/search"
+        f"?query={ticker}&search_space=NEWS&limit=20"
+    )
+    try:
+        _validate_url(search_url)
+        response = requests.get(search_url, headers=_HEADERS, timeout=_TIMEOUT)
+        response.raise_for_status()
+        payload = response.json()
+
+        # The API may return either a list or a dict with a results key.
+        if isinstance(payload, dict):
+            items = payload.get("results", [])
+        elif isinstance(payload, list):
+            items = payload
+        else:
+            items = []
+
+        entries: list[dict[str, str]] = []
+        for item in items:
+            title = (
+                item.get("headline")
+                or item.get("title")
+                or item.get("name")
+                or ""
+            )
+            link = item.get("url") or item.get("link") or ""
+            summary = item.get("summary") or item.get("body") or ""
+            published = item.get("date") or item.get("publish_time") or ""
+
+            # Only include items that have at least a non-empty title.
+            if title:
+                entries.append(
+                    {
+                        "title": title,
+                        "link": link,
+                        "summary": summary[:300],
+                        "published": str(published),
+                    }
+                )
+
+        logger.debug("Nordnet returned %d entries for %s", len(entries), ticker)
+        return entries
+
+    except Exception as exc:
+        logger.error("Error fetching Nordnet news for %s: %s", ticker, exc)
+        return []
+
+
 def filter_entries_by_ticker(
     entries: list[dict[str, str]], ticker: str
 ) -> list[dict[str, str]]:
