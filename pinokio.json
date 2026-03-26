@@ -1,0 +1,35 @@
+{
+  "title": "Stock Analyzer",
+  "description": "A Gradio-based stock analysis dashboard with sentiment analysis and price prediction.",
+  "icon": "📈",
+  "menu": [
+    {
+      "id": "install",
+      "label": "Install",
+      "description": "Create virtual environment and install dependencies",
+      "icon": "⬇️",
+      "script": "install.sh"
+    },
+    {
+      "id": "start",
+      "label": "Start",
+      "description": "Start the Stock Analyzer Gradio dashboard",
+      "icon": "▶️",
+      "script": "start.sh"
+    },
+    {
+      "id": "stop",
+      "label": "Stop",
+      "description": "Stop the running Stock Analyzer",
+      "icon": "⏹️",
+      "script": "stop.sh"
+    },
+    {
+      "id": "update",
+      "label": "Update",
+      "description": "Pull latest changes and update dependencies",
+      "icon": "🔄",
+      "script": "update.sh"
+    }
+  ]
+}
