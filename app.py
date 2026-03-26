@@ -9,7 +9,6 @@ The Gradio interface is available at http://localhost:7860 by default.
 
 from __future__ import annotations
 
-import io
 import logging
 import sys
 from typing import Any
@@ -192,8 +191,70 @@ def _build_price_chart(
 
 
 # ---------------------------------------------------------------------------
+# Scandinavian scanner pipeline
+# ---------------------------------------------------------------------------
+
+
+def run_scan() -> tuple[pd.DataFrame, str]:
+    """Scan Scandinavian exchanges for day trading opportunities.
+
+    Returns
+    -------
+    tuple
+        ``(results_df, status_html)``
+    """
+    from analyzer.scanner import scan_scandinavian_stocks
+
+    _empty_cols = [
+        "Ticker", "Company", "Exchange", "Last Close",
+        "5d Change %", "Vol Ratio", "RSI", "Volatility", "Score",
+    ]
+    empty = pd.DataFrame(columns=_empty_cols)
+
+    logger.info("Running Scandinavian stock scan")
+    try:
+        df = scan_scandinavian_stocks()
+    except Exception as exc:
+        logger.error("Scan failed: %s", exc)
+        err_html = (
+            '<p style="color:#d50000;">⚠️ Scan failed. '
+            f"Check network connection. ({exc})</p>"
+        )
+        return empty, err_html
+
+    if df.empty:
+        return empty, (
+            '<p style="color:#e65100;">⚠️ No data retrieved. '
+            "Markets may be closed or tickers unavailable.</p>"
+        )
+
+    status_html = (
+        '<p style="color:#2e7d32;">✅ Scan complete — '
+        f"<strong>{len(df)}</strong> top day trading opportunities found across "
+        "Stockholm, Oslo, Copenhagen and Helsinki exchanges."
+        "<br><em>Prices are in the stock's local currency.  "
+        "Click any row to open the full analysis.</em></p>"
+    )
+    return df, status_html
+
+
+# ---------------------------------------------------------------------------
 # Gradio UI
 # ---------------------------------------------------------------------------
+
+_ANALYZER_OUTPUTS = [
+    "rec_table",
+    "sentiment_output",
+    "headlines_output",
+    "explanation_output",
+    "confidence_output",
+    "price_chart",
+]
+
+_SCANNER_COLS = [
+    "Ticker", "Company", "Exchange", "Last Close",
+    "5d Change %", "Vol Ratio", "RSI", "Volatility", "Score",
+]
 
 
 def build_ui() -> gr.Blocks:
@@ -205,66 +266,165 @@ def build_ui() -> gr.Blocks:
         The assembled Gradio application (not yet launched).
     """
     with gr.Blocks(title="Stock Analyzer") as demo:
-        gr.Markdown(
-            "# 📈 Stock Analyzer\n"
-            "Enter a ticker symbol and click **Analyze** to get a full market analysis."
-        )
+        gr.Markdown("# 📈 Stock Analyzer")
 
-        with gr.Row():
-            ticker_input = gr.Textbox(
-                label="Ticker Symbol",
-                placeholder="e.g. AAPL, TSLA, MSFT",
-                scale=4,
-            )
-            analyze_btn = gr.Button("Analyze", variant="primary", scale=1)
+        with gr.Tabs() as tabs:
 
-        with gr.Row():
-            with gr.Column(scale=2):
-                gr.Markdown("### 📊 Recommendation")
-                rec_table = gr.Dataframe(
-                    headers=["Ticker", "Last Close", "5d Change %", "RSI", "Direction", "Confidence"],
-                    label="Analysis Results",
+            # ----------------------------------------------------------------
+            # Tab 1 – Scandinavian Scanner
+            # ----------------------------------------------------------------
+            with gr.Tab("🇸🇪 Scandinavian Scanner", id=0):
+                gr.Markdown(
+                    "## 🔍 Scandinavian Day Trading Scanner\n"
+                    "Scans **Stockholm** (.ST), **Oslo** (.OL), "
+                    "**Copenhagen** (.CO) and **Helsinki** (.HE) "
+                    "exchanges for stocks with strong day trading potential.\n\n"
+                    "Click **Scan Now** to fetch live data, then **click any row** "
+                    "to open the full analysis."
                 )
 
-                gr.Markdown("### 🎯 Confidence Score")
-                confidence_output = gr.HTML(label="Confidence")
+                scan_btn = gr.Button("🔍 Scan Now", variant="primary")
+                scan_status = gr.HTML(
+                    '<p style="color:#555;">Press <strong>Scan Now</strong> '
+                    "to discover today's opportunities.</p>"
+                )
+                scan_results = gr.Dataframe(
+                    headers=_SCANNER_COLS,
+                    label="Top Day Trading Opportunities",
+                    interactive=False,
+                    wrap=True,
+                )
+                gr.Markdown(
+                    "_**Score** combines volume ratio (30 %), volatility (30 %), "
+                    "RSI extremity (20 %) and 5-day momentum (20 %).  "
+                    "Higher = more day trading potential._"
+                )
 
-                gr.Markdown("### 🧭 Sentiment")
-                sentiment_output = gr.HTML(label="Sentiment Indicator")
+            # ----------------------------------------------------------------
+            # Tab 2 – Analyzer
+            # ----------------------------------------------------------------
+            with gr.Tab("📊 Analyzer", id=1):
+                gr.Markdown(
+                    "Enter a ticker symbol and click **Analyze** "
+                    "(or press Enter) to get a full market analysis."
+                )
 
-            with gr.Column(scale=3):
-                gr.Markdown("### 📉 Price Chart")
-                price_chart = gr.Plot(label="Sparkline Chart")
+                with gr.Row():
+                    ticker_input = gr.Textbox(
+                        label="Ticker Symbol",
+                        placeholder="e.g. AAPL, EQNR.OL, NOVO-B.CO",
+                        scale=4,
+                    )
+                    analyze_btn = gr.Button("Analyze", variant="primary", scale=1)
 
-        gr.Markdown("### 💡 Prediction Explanation")
-        explanation_output = gr.Textbox(label="Explanation", lines=3, interactive=False)
+                with gr.Row():
+                    with gr.Column(scale=2):
+                        gr.Markdown("### 📊 Recommendation")
+                        rec_table = gr.Dataframe(
+                            headers=[
+                                "Ticker", "Last Close", "5d Change %",
+                                "RSI", "Direction", "Confidence",
+                            ],
+                            label="Analysis Results",
+                        )
 
-        gr.Markdown("### 📰 News Headlines")
-        headlines_output = gr.HTML(label="Top News")
+                        gr.Markdown("### 🎯 Confidence Score")
+                        confidence_output = gr.HTML(label="Confidence")
+
+                        gr.Markdown("### 🧭 Sentiment")
+                        sentiment_output = gr.HTML(label="Sentiment Indicator")
+
+                    with gr.Column(scale=3):
+                        gr.Markdown("### 📉 Price Chart")
+                        price_chart = gr.Plot(label="Sparkline Chart")
+
+                gr.Markdown("### 💡 Prediction Explanation")
+                explanation_output = gr.Textbox(
+                    label="Explanation", lines=3, interactive=False
+                )
+
+                gr.Markdown("### 📰 News Headlines")
+                headlines_output = gr.HTML(label="Top News")
+
+        # --------------------------------------------------------------------
+        # Analyzer events
+        # --------------------------------------------------------------------
+        _analysis_outputs = [
+            rec_table,
+            sentiment_output,
+            headlines_output,
+            explanation_output,
+            confidence_output,
+            price_chart,
+        ]
 
         analyze_btn.click(
             fn=run_analysis,
             inputs=[ticker_input],
-            outputs=[
-                rec_table,
-                sentiment_output,
-                headlines_output,
-                explanation_output,
-                confidence_output,
-                price_chart,
-            ],
+            outputs=_analysis_outputs,
         )
 
         ticker_input.submit(
             fn=run_analysis,
             inputs=[ticker_input],
+            outputs=_analysis_outputs,
+        )
+
+        # --------------------------------------------------------------------
+        # Scanner events
+        # --------------------------------------------------------------------
+        scan_btn.click(
+            fn=run_scan,
+            outputs=[scan_results, scan_status],
+        )
+
+        def _on_scanner_select(
+            evt: gr.SelectData,
+            df: pd.DataFrame | None,
+        ) -> tuple[Any, ...]:
+            """Handle row selection in the scanner table.
+
+            Extracts the ticker from the selected row, switches to the
+            Analyzer tab, pre-fills the ticker input and runs the analysis.
+            """
+            if df is None or df.empty:
+                empty = pd.DataFrame(
+                    columns=["Ticker", "Last Close", "5d Change %", "RSI", "Direction"]
+                )
+                return (
+                    gr.update(),          # ticker_input – no change
+                    gr.update(),          # tabs – no change
+                    empty, "—", "No data.", "No data.", "0%", None,
+                )
+
+            row_idx = evt.index[0]
+            if row_idx >= len(df):
+                empty = pd.DataFrame(
+                    columns=["Ticker", "Last Close", "5d Change %", "RSI", "Direction"]
+                )
+                return (
+                    gr.update(),
+                    gr.update(),
+                    empty, "—", "No data.", "No data.", "0%", None,
+                )
+
+            ticker = str(df.iloc[row_idx]["Ticker"])
+            logger.info("Scanner row clicked – analysing %s", ticker)
+            analysis = run_analysis(ticker)
+
+            return (
+                gr.update(value=ticker),      # populate ticker input
+                gr.update(selected=1),        # switch to Analyzer tab
+                *analysis,                    # all six analysis outputs
+            )
+
+        scan_results.select(
+            fn=_on_scanner_select,
+            inputs=[scan_results],
             outputs=[
-                rec_table,
-                sentiment_output,
-                headlines_output,
-                explanation_output,
-                confidence_output,
-                price_chart,
+                ticker_input,
+                tabs,
+                *_analysis_outputs,
             ],
         )
 
