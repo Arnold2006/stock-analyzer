@@ -9,13 +9,14 @@ module.exports = {
     {
       method: "shell.run",
       params: {
-        message: "venv/bin/pip install --upgrade pip"
+        venv: "venv",
+        message: "pip install -r requirements.txt"
       }
     },
     {
-      method: "shell.run",
+      method: "notify",
       params: {
-        message: "venv/bin/pip install -r requirements.txt"
+        html: "Installation complete! Click 'Start' to launch the app."
       }
     }
   ]

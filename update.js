@@ -9,7 +9,8 @@ module.exports = {
     {
       method: "shell.run",
       params: {
-        message: "venv/bin/pip install --upgrade pip && venv/bin/pip install -r requirements.txt"
+        venv: "venv",
+        message: "pip install -r requirements.txt"
       }
     }
   ]
