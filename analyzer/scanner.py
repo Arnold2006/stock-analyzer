@@ -93,7 +93,7 @@ def _compute_volume_ratio(df: pd.DataFrame, window: int = 20) -> float | None:
     if df.empty or "Volume" not in df.columns:
         return None
     volume = df["Volume"].dropna()
-    if len(volume) < 2:
+    if len(volume) < max(2, window // 2):
         return None
     avg = float(volume.rolling(min(window, len(volume))).mean().iloc[-1])
     if avg == 0:

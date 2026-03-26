@@ -242,15 +242,6 @@ def run_scan() -> tuple[pd.DataFrame, str]:
 # Gradio UI
 # ---------------------------------------------------------------------------
 
-_ANALYZER_OUTPUTS = [
-    "rec_table",
-    "sentiment_output",
-    "headlines_output",
-    "explanation_output",
-    "confidence_output",
-    "price_chart",
-]
-
 _SCANNER_COLS = [
     "Ticker", "Company", "Exchange", "Last Close",
     "5d Change %", "Vol Ratio", "RSI", "Volatility", "Score",
