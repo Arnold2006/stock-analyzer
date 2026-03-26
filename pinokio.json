@@ -8,14 +8,14 @@
       "label": "Install",
       "description": "Create virtual environment and install dependencies",
       "icon": "⬇️",
-      "script": "install.sh"
+      "script": "install.js"
     },
     {
       "id": "start",
       "label": "Start",
       "description": "Start the Stock Analyzer Gradio dashboard",
       "icon": "▶️",
-      "script": "start.sh"
+      "script": "start.js"
     },
     {
       "id": "stop",
