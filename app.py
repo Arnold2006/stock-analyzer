@@ -107,7 +107,7 @@ def run_analysis(ticker: str) -> tuple[Any, str, str, str, str, Any]:
     if headlines:
         items = "".join(
             f'<li style="margin-bottom:6px;">'
-            f'<a href="{h["link"]}" target="_blank" style="color:#0d47a1;text-decoration:underline;">{h["title"]}</a>'
+            f'<a href="{h["link"]}" target="_blank" style="color:#90caf9;text-decoration:underline;">{h["title"]}</a>'
             f'<span style="color:#888;font-size:0.8rem;margin-left:8px;">{h.get("published","")}</span>'
             f"</li>"
             for h in headlines
