@@ -66,6 +66,11 @@ def get_price_history(ticker: str, period: str = "3mo") -> pd.DataFrame:
     try:
         clean = _validate_ticker(ticker)
         df = yf.download(clean, period=period, auto_adjust=True, progress=False)
+        # Newer yfinance versions return a MultiIndex DataFrame for single-ticker
+        # downloads (columns like ('Close', 'AAPL')).  Flatten to a plain Index so
+        # the rest of the code can access df["Close"] as a Series.
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
         if df.empty:
             logger.warning("No price data returned for %s", ticker)
         else:
